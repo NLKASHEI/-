@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
@@ -21,6 +22,8 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.RenderProcessGoneDetail;
+import android.webkit.JavascriptInterface;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
@@ -33,6 +36,10 @@ import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 
 /**
  * Entirely offline Flash app. Its one fixed HTTPS origin is served from APK assets.
@@ -46,6 +53,11 @@ public class MainActivity extends Activity {
     private FrameLayout root;
     private WebView game;
     private SaveStore saves;
+    private SharedPreferences displayPrefs;
+    private FrameLayout.LayoutParams gameParams;
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private long lastRecoveryAt = 0;
+    private int rendererFailures = 0;
 
     private int dp(float n) {
         return (int) (n * getResources().getDisplayMetrics().density + 0.5f);
@@ -106,43 +118,17 @@ public class MainActivity extends Activity {
         root = new FrameLayout(this);
         root.setBackgroundColor(Color.BLACK);
         root.setMotionEventSplittingEnabled(true);
-        game = new WebView(this);
-        game.setBackgroundColor(Color.BLACK);
-        game.setFocusable(true);
-        game.setFocusableInTouchMode(true);
-        WebSettings settings = game.getSettings();
-        settings.setJavaScriptEnabled(true);
-        settings.setDomStorageEnabled(true);
-        settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setAllowFileAccess(false);
-        settings.setAllowContentAccess(false);
-        settings.setSupportZoom(false);
-        settings.setUseWideViewPort(true);
-        settings.setLoadWithOverviewMode(true);
-        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        game.addJavascriptInterface(saves, "AndroidSave");
-        game.setWebChromeClient(new WebChromeClient());
-        game.setWebViewClient(new WebViewClient() {
-            @Override
-            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                return asset(request.getUrl());
-            }
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                Uri url = request.getUrl();
-                return !"https".equals(url.getScheme()) || !HOST.equalsIgnoreCase(url.getHost());
-            }
-        });
+        displayPrefs = getSharedPreferences("WitchGirlDisplay", MODE_PRIVATE);
+        game = createGameView();
 
         // Leave dedicated touch-control gutters instead of overlaying the game.
-        DisplayMetrics dm = getResources().getDisplayMetrics();
-        float width = (float) dm.widthPixels / dm.density;
-        float height = (float) dm.heightPixels / dm.density;
-        int gutter = Math.max(156, Math.min(210, Math.round((width - height * 1.376f) / 2f)));
-        FrameLayout.LayoutParams gameParams = new FrameLayout.LayoutParams(-1, -1);
+        // Reserve only the actual width of the touch buttons. The movie itself
+        // is allowed to occupy the rest of the landscape viewport.
+        int gutter = 154;
+        gameParams = new FrameLayout.LayoutParams(-1, -1);
         gameParams.leftMargin = dp(gutter);
         gameParams.rightMargin = dp(gutter);
-        root.addView(game, gameParams);
+        root.addView(game, 0, gameParams);
 
         // Five-row? No: 4-way D-pad on the left, Z/X/C on the right.
         addKey("↑", KeyEvent.KEYCODE_DPAD_UP, false, 55, 80);
@@ -160,9 +146,160 @@ public class MainActivity extends Activity {
         root.addView(saveButton, saveParams);
         saveButton.setOnClickListener(v -> showSaveMenu());
 
+        Button displayButton = createButton("画面", 15, 0xA030384B, 0xAA92A2BA);
+        FrameLayout.LayoutParams displayParams = new FrameLayout.LayoutParams(dp(72), dp(42), Gravity.LEFT | Gravity.TOP);
+        displayParams.topMargin = dp(12);
+        displayParams.leftMargin = dp(14);
+        root.addView(displayButton, displayParams);
+        displayButton.setOnClickListener(v -> showDisplayMenu());
+
         setContentView(root);
-        game.loadUrl(ENTRY);
+        game.loadUrl(entryUrl());
         game.requestFocus();
+    }
+
+
+    private String entryUrl() {
+        String renderer = displayPrefs.getString("renderer", "wgpu-webgl");
+        String scale = displayPrefs.getString("scale", "exactfit");
+        String quality = displayPrefs.getString("quality", "low");
+        return ENTRY + "?renderer=" + Uri.encode(renderer) + "&scale=" + Uri.encode(scale) +
+                "&quality=" + Uri.encode(quality);
+    }
+
+    private WebView createGameView() {
+        WebView web = new WebView(this);
+        web.setBackgroundColor(Color.BLACK);
+        web.setOverScrollMode(View.OVER_SCROLL_NEVER);
+        web.setFocusable(true);
+        web.setFocusableInTouchMode(true);
+        web.setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true);
+        WebSettings settings = web.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setAllowFileAccess(false);
+        settings.setAllowContentAccess(false);
+        settings.setSupportZoom(false);
+        settings.setBuiltInZoomControls(false);
+        settings.setDisplayZoomControls(false);
+        settings.setUseWideViewPort(true);
+        settings.setLoadWithOverviewMode(true);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
+        web.addJavascriptInterface(saves, "AndroidSave");
+        web.addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void onGpuLost() {
+                runOnUiThread(() -> recoverRenderer("图形渲染中断，尝试自动恢复"));
+            }
+        }, "AndroidRecovery");
+        web.setWebChromeClient(new WebChromeClient());
+        web.setWebViewClient(new WebViewClient() {
+            @Override
+            public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                return asset(request.getUrl());
+            }
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                Uri url = request.getUrl();
+                return !"https".equals(url.getScheme()) || !HOST.equalsIgnoreCase(url.getHost());
+            }
+            @Override
+            public boolean onRenderProcessGone(WebView view, RenderProcessGoneDetail detail) {
+                // A dead renderer must NEVER be reused: destroy and re-create the WebView.
+                if (view == game) {
+                    rendererFailures++;
+                    if (root != null) root.removeView(view);
+                    view.destroy();
+                    game = null;
+                    handler.post(() -> {
+                        if (rendererFailures == 1) {
+                            displayPrefs.edit().putString("renderer", "webgl").apply();
+                        }
+                        game = createGameView();
+                        if (root != null && gameParams != null) {
+                            root.addView(game, 0, gameParams);
+                            game.loadUrl(entryUrl());
+                        }
+                        toast("已恢复游戏窗口；如仍白屏，可在「画面」里切换渲染");
+                    });
+                }
+                return true;
+            }
+        });
+        return web;
+    }
+
+    private void loadGameAfterSnapshot() {
+        final WebView current = game;
+        if (current == null) return;
+        final AtomicBoolean once = new AtomicBoolean(false);
+        Runnable reload = () -> {
+            if (once.compareAndSet(false, true) && current == game) {
+                current.loadUrl(entryUrl());
+            }
+        };
+        // When Ruffle is blocked, evaluateJavascript may never respond.
+        handler.postDelayed(reload, 1200);
+        try {
+            current.evaluateJavascript("window.WitchSave && window.WitchSave.snapshot(true)", result -> reload.run());
+        } catch (Exception e) {
+            reload.run();
+        }
+    }
+
+    private void recoverRenderer(String message) {
+        long now = SystemClock.uptimeMillis();
+        if (now - lastRecoveryAt < 15000) return;
+        lastRecoveryAt = now;
+        rendererFailures++;
+        if (rendererFailures == 1) displayPrefs.edit().putString("renderer", "webgl").apply();
+        if (rendererFailures >= 3) {
+            toast("反复出现 GPU 错误，请在「画面」里手动切换渲染");
+            return;
+        }
+        toast(message);
+        loadGameAfterSnapshot();
+    }
+
+    private void selectDisplaySetting(String key, String value) {
+        if (value.equals(displayPrefs.getString(key, ""))) return;
+        displayPrefs.edit().putString(key, value).apply();
+        loadGameAfterSnapshot();
+    }
+
+    private void showDisplayMenu() {
+        String renderer = displayPrefs.getString("renderer", "wgpu-webgl");
+        String quality = displayPrefs.getString("quality", "low");
+        String scale = displayPrefs.getString("scale", "exactfit");
+        String[] actions = {
+          (scale.equals("exactfit") ? "✓ " : "") + "游戏画面铺满（略微拉伸，显示完整）",
+          (scale.equals("showAll") ? "✓ " : "") + "游戏原始比例（不变形，留黑边）",
+          (scale.equals("noborder") ? "✓ " : "") + "等比填充（上下可能裁切）",
+          (quality.equals("low") ? "✓ " : "") + "低画质（优先流畅）",
+          (quality.equals("medium") ? "✓ " : "") + "中画质（画面更锐利）",
+          (renderer.equals("wgpu-webgl") ? "✓ " : "") + "标准渲染（特效更完整）",
+          (renderer.equals("webgl") ? "✓ " : "") + "快速渲染（部分特效可能缺失）",
+          (renderer.equals("canvas") ? "✓ " : "") + "软件渲染（应急，可能非常慢）",
+          "恢复画面（不删除存档，返回游戏标题）"
+        };
+        new AlertDialog.Builder(this)
+            .setTitle("游戏内部画面 · 渲染设置")
+            .setItems(actions, (dialog, which) -> {
+                switch (which) {
+                    case 0: selectDisplaySetting("scale", "exactfit"); break;
+                    case 1: selectDisplaySetting("scale", "showAll"); break;
+                    case 2: selectDisplaySetting("scale", "noborder"); break;
+                    case 3: selectDisplaySetting("quality", "low"); break;
+                    case 4: selectDisplaySetting("quality", "medium"); break;
+                    case 5: selectDisplaySetting("renderer", "wgpu-webgl"); break;
+                    case 6: selectDisplaySetting("renderer", "webgl"); break;
+                    case 7: selectDisplaySetting("renderer", "canvas"); break;
+                    case 8: loadGameAfterSnapshot(); break;
+                }
+            })
+            .setNegativeButton("取消", null)
+            .show();
     }
 
     private Button createButton(String text, int textSize, int bgColor, int outline) {
