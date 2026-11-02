@@ -1,5 +1,12 @@
-# Witch Girl · Android offline build
+# Witch Girl · 离线安卓封装
 
-目标：离线 Android APK，内置 SWF 与 Ruffle 运行环境，横屏原生虚拟方向键和 Z/X/C。
+这是针对 KooooNSoft Witch Girl（日文 v2.20）的非官方 Android 封装工程。
 
-当前先验证游戏原站 SWF 是否可以在 GitHub Actions 构建环境合法获取。若源站拒绝，不会生成虚假的联网 APK。
+- **目标**：编译时下载原版 SWF 和开源 Ruffle 运行时，并将二者打入 APK。安装后无需网络。
+- **按键**：方向键、Z、X、C。横屏，支持长按和多点触控。
+- **下载 APK**：进入 GitHub 仓库 **Actions → Build offline APK → 最新成功运行 → Artifacts → Witch-Girl-offline-APK**，下载 ZIP，解压得到 APK。
+- **重要**：目前没有安卓真机兼容性测试，不保证 Ruffle 对所有旧版 Flash 特性都完全兼容；游戏若引用额外资源也可能需要补包。
+- **版权**：游戏资源属于原作者，此仓库不直接提交游戏二进制资源。离线封装仅供游戏拥有合法使用权者自行使用。
+
+原始页面：https://www.comdotgame.com/play/witch-girl
+Ruffle：https://ruffle.rs

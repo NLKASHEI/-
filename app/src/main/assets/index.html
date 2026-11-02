@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<style>
+html,body{height:100%;width:100%;margin:0;overflow:hidden;background:#050507;color:#fff;font-family:sans-serif}
+#stage{position:absolute;top:0;bottom:0;left:0;right:0;display:flex;align-items:center;justify-content:center}
+ruffle-player{width:100%;height:100%;outline:none}
+#loading{position:absolute;left:20%;right:20%;top:45%;text-align:center;pointer-events:none;white-space:pre-line;font-size:14px;color:#d8dfeb}
+</style>
+</head>
+<body>
+<div id="stage"></div><div id="loading">正在加载本地游戏…</div>
+<script src="ruffle/ruffle.js"></script>
+<script>
+(function(){
+ const loading=document.getElementById('loading');
+ try {
+   window.RufflePlayer = window.RufflePlayer || {};
+   window.RufflePlayer.config={
+      autoplay:"on",
+      unmuteOverlayVisibility:"hidden",
+      scale:"showAll",
+      forceScale:true,
+      letterbox:"on",
+      allowScriptAccess:false,
+      logLevel:"error"
+   };
+   const ruffle=window.RufflePlayer.newest();
+   const player=ruffle.createPlayer();
+   player.style.width="100%"; player.style.height="100%";
+   document.getElementById('stage').appendChild(player);
+   Promise.resolve(player.ruffle().load({url:"game.swf"})).then(
+      function(){loading.style.display="none";player.focus();},
+      function(e){loading.textContent="本地 SWF 加载失败:\n"+String(e);}
+   );
+ } catch(e){loading.textContent="Ruffle 启动失败:\n"+String(e);}
+})();
+</script>
+</body>
+</html>
