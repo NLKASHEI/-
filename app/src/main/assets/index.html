@@ -6,8 +6,8 @@
 <style>
 html,body { width:100%; height:100%; margin:0; padding:0; overflow:hidden; background:#050507; color:white; font-family:sans-serif; }
 body { display:flex; align-items:center; justify-content:center; }
-#stage { position:relative; width:min(100%, 137.6vh); max-height:100%; aspect-ratio:728 / 529; }
-ruffle-player { display:block; width:100%; height:100%; outline:0; }
+#stage { position:relative; width:100%; height:100%; overflow:hidden; background:#08090b; }
+ruffle-player { display:block; width:100%; height:100%; outline:0; touch-action:manipulation; }
 #status { position:absolute; left:5%; right:5%; top:45%; z-index:1; text-align:center; pointer-events:none; font-size:13px; white-space:pre-line; }
 </style>
 </head>
@@ -76,7 +76,7 @@ ruffle-player { display:block; width:100%; height:100%; outline:0; }
   }
   restoreNative();
   window.WitchSave = {snapshot, importBackup};
-  setInterval(() => snapshot(false), 2500);
+  setInterval(() => snapshot(false), 5000);
   document.addEventListener('visibilitychange', () => { if (document.hidden) snapshot(true); });
   window.addEventListener('pagehide', () => snapshot(true));
   window.addEventListener('beforeunload', () => snapshot(true));
@@ -87,24 +87,85 @@ ruffle-player { display:block; width:100%; height:100%; outline:0; }
 <script>
 (function () {
   const status = document.getElementById('status');
+  const query = new URLSearchParams(location.search);
+  const validRenderers = new Set(['wgpu-webgl','webgl','canvas']);
+  const renderer = validRenderers.has(query.get('renderer')) ? query.get('renderer') : 'wgpu-webgl';
+  const validScales = new Set(['exactfit','showAll','noborder']);
+  const scale = validScales.has(query.get('scale')) ? query.get('scale') : 'exactfit';
+  const quality = query.get('quality') === 'medium' ? 'medium' : 'low';
+  let recovered = false;
+  let player;
+
+  // Reduces GPU MSAA overhead on phones. The normal default uses a heavier path.
+  const config = {
+    autoplay:'on', unmuteOverlayVisibility:'hidden',
+    preferredRenderer:renderer, quality:quality,
+    scale:scale, forceScale:true, letterbox:'off',
+    allowScriptAccess:false, logLevel:'warn',
+    publicPath:'ruffle/', contextMenu:'off',
+    openUrlMode:'deny', allowNetworking:'internal'
+  };
+  window.RufflePlayer = window.RufflePlayer || {};
+  window.RufflePlayer.config = config;
+
+  function showError(reason) {
+    status.style.display='block';
+    status.textContent=reason+'\n可以点击右上角「画面」切换渲染方式，或使用「恢复画面」。';
+  }
+
+  function watchGpu() {
+    // The renderer lives inside Ruffle's shadow DOM, not the HTML stage.
+    const root = player && player.shadowRoot;
+    if (!root) return;
+    let lost = false;
+    function attach() {
+      root.querySelectorAll('canvas').forEach(canvas => {
+        if (canvas.__witchCanvasObserved) return;
+        canvas.__witchCanvasObserved = true;
+        canvas.addEventListener('webglcontextlost', (event) => {
+          event.preventDefault();
+          lost = true;
+          showError('GPU 渲染上下文丢失（可能导致白屏）。');
+          if (!recovered) {
+            recovered=true;
+            setTimeout(() => {
+              if (lost && window.AndroidRecovery) window.AndroidRecovery.onGpuLost();
+            }, 2500);
+          }
+        });
+        canvas.addEventListener('webglcontextrestored', () => {
+          lost = false;
+          status.style.display='none';
+        });
+      });
+    }
+    attach();
+    new MutationObserver(attach).observe(root, {childList:true,subtree:true});
+  }
+
   try {
-    window.RufflePlayer = window.RufflePlayer || {};
-    window.RufflePlayer.config = {
-      autoplay:"on", unmuteOverlayVisibility:"hidden",
-      scale:"showAll", forceScale:true,
-      letterbox:"on", allowScriptAccess:false, logLevel:"warn",
-      publicPath:"ruffle/",
-      contextMenu:"off"
-    };
-    const api=window.RufflePlayer.newest();
-    const player=api.createPlayer();
-    const stage=document.getElementById('stage');
+    const api = window.RufflePlayer.newest();
+    player = api.createPlayer();
+    const stage = document.getElementById('stage');
     stage.insertBefore(player,status);
-    const base='https://appassets.androidplatform.net/assets/witch-girl-u/2.20/';
-    Promise.resolve(player.ruffle().load({url:"game.swf",base:base}))
-      .then(function(){status.style.display="none";player.focus();})
-      .catch(function(e){status.textContent="离线游戏加载失败:\n"+String(e);});
-  } catch(e) { status.textContent="Ruffle 启动失败:\n"+String(e); }
+    player.ruffle().config = config;
+    watchGpu();
+    const base = 'https://appassets.androidplatform.net/assets/witch-girl-u/2.20/';
+    Promise.resolve(player.ruffle().load({
+      url:'game.swf', base:base,
+      preferredRenderer:renderer, quality:quality,
+      scale:scale, forceScale:true
+    })).then(() => {
+      status.style.display='none';
+      player.focus();
+    }).catch(e => {
+      showError('游戏启动失败：'+String(e));
+      console.error('Ruffle game load failed', e);
+    });
+  } catch(e) {
+    showError('Ruffle 初始化失败：'+String(e));
+    console.error('Ruffle init error', e);
+  }
 })();
 </script>
 </body>
