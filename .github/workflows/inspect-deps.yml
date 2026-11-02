@@ -1,0 +1,12 @@
+name: Inspect game dependencies
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/inspect-deps.yml"]
+  workflow_dispatch:
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: python3 tools/analyze_swf.py
