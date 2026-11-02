@@ -15,19 +15,19 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: Witch-Girl-offline-APK
-          run-id: 41499630594
+          run-id: 41502366109
           github-token: ${{ github.token }}
           path: dist
       - name: Prepare verified APK
         run: |
           test -s dist/app-debug.apk
-          mv dist/app-debug.apk dist/Witch-Girl-Offline-v1.1.0.apk
-          sha256sum dist/Witch-Girl-Offline-v1.1.0.apk
+          mv dist/app-debug.apk dist/Witch-Girl-Offline-v1.2.0.apk
+          sha256sum dist/Witch-Girl-Offline-v1.2.0.apk
       - name: Publish direct APK download
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create v1.1.0 dist/Witch-Girl-Offline-v1.1.0.apk --repo NLKASHEI/- \
-            --title "Witch Girl Offline Android v1.1.0" \
-            --notes "Unofficial, untested Android APK. Fixed multi-asset build: original Japanese Witch Girl v2.20 with 56 external SWFs, 7 BGM files and offline Ruffle. Correct-aspect landscape display with dedicated control gutters; on-device automatic save backup, export/import JSON via storage picker. No network needed at runtime. Note: v1.0.0 was signed with a different ephemeral debug key; installing v1.1.0 over v1.0.0 may require uninstalling the old APK (which removes old app data). Future versions will retain this signing identity. Compatibility has NOT been tested on a physical device. Original game © respective creators. Use only if you have appropriate rights." \
+          gh release create v1.2.0 dist/Witch-Girl-Offline-v1.2.0.apk --repo NLKASHEI/- \
+            --title "Witch Girl Offline Android v1.2.0" \
+            --notes "Unofficial, untested Android APK. Fixed multi-asset build: original Japanese Witch Girl v2.20 with 56 external SWFs, 7 BGM files and offline Ruffle. Correct-aspect landscape display with dedicated control gutters; on-device automatic save backup, export/import JSON via storage picker. No network needed at runtime. Note: v1.0.0 was signed with a different ephemeral debug key; installing v1.2.0 over v1.0.0 may require uninstalling the old APK (which removes old app data). Future versions will retain this signing identity. Compatibility has NOT been tested on a physical device. Original game © respective creators. Use only if you have appropriate rights." \
             --prerelease
