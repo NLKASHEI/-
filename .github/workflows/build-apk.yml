@@ -36,6 +36,20 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
+      - name: Preserve APK signing key for future upgrades
+        uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: witchgirl-android-signing-debug-v1
+      - name: Ensure stable APK signing identity
+        run: |
+          mkdir -p "$HOME/.android"
+          if [ ! -f "$HOME/.android/debug.keystore" ]; then
+            keytool -genkeypair -v -keystore "$HOME/.android/debug.keystore" \
+              -storepass android -keypass android -alias androiddebugkey \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US" -noprompt
+          fi
       - name: Download genuine game SWF for offline APK
         run: python3 tools/fetch_game.py
       - name: Bundle local Ruffle runtime
@@ -68,6 +82,11 @@ jobs:
               assert 'assets/ruffle/ruffle.js' in names, 'Missing local Ruffle'
               assert any(x.startswith('assets/ruffle/') and x.endswith('.wasm') for x in names),'Missing WASM runtime'
               assert z.getinfo('assets/game.swf').file_size>100_000
+              bundled_swfs=[name for name in names if name.startswith('assets/witch-girl-u/2.20/data/') and name.endswith('.swf')]
+              bundled_music=[name for name in names if name.startswith('assets/witch-girl-u/2.20/sound/') and name.endswith('.mp3')]
+              assert len(bundled_swfs)>=45, 'Missing game characters: '+str(len(bundled_swfs))
+              assert len(bundled_music)>=7, 'Missing soundtrack: '+str(len(bundled_music))
+              print('Validated external assets: SWF',len(bundled_swfs),'MP3',len(bundled_music))
               print('Validated offline APK. Files:',len(names),'SWF bytes:',z.getinfo('assets/game.swf').file_size)
           PY
       - uses: actions/upload-artifact@v4
