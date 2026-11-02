@@ -1,13 +1,34 @@
-# Witch Girl · 离线安卓封装
+# Witch Girl · 安卓离线版
 
-这是针对 KooooNSoft Witch Girl（日文 v2.20）的非官方 Android 封装工程。
+这是针对 KooooNSoft《Witch Girl》（日文 v2.20）的非官方 Android 封装。
 
-- **目标**：编译时下载原版 SWF 和开源 Ruffle 运行时，并将二者打入 APK。安装后无需网络。
-- **按键**：方向键、Z、X、C。横屏，支持长按和多点触控。
-- **直接下载 APK**：[Witch-Girl-Offline-v1.0.0.apk](https://github.com/NLKASHEI/-/releases/download/v1.0.0/Witch-Girl-Offline-v1.0.0.apk)（约 46 MB）。
-- **备用下载**：Actions → Build offline APK → 最新成功运行 → Artifacts → Witch-Girl-offline-APK。
-- **重要**：目前没有安卓真机兼容性测试，不保证 Ruffle 对所有旧版 Flash 特性都完全兼容；游戏若引用额外资源也可能需要补包。
-- **版权**：游戏资源属于原作者，此仓库不直接提交游戏二进制资源。离线封装仅供游戏拥有合法使用权者自行使用。
+## 下载
+
+**[下载 v1.1.0 修复版 APK（约 103 MB）](https://github.com/NLKASHEI/-/releases/download/v1.1.0/Witch-Girl-Offline-v1.1.0.apk)**
+
+v1.0.0 因缺少人物素材、场景和背景音乐，**已知不完整，不建议安装**。
+
+## v1.1.0 修复内容
+
+- 主游戏 SWF + **56 个外部 SWF**（包括人物/场景/画廊）+ **7 个原始关卡 MP3**，编译时获取并全部打包进 APK。安装后无需联网。
+- 修正横屏游戏画面的宽高比（728:529），并给左右触屏按键留出独立区域，避免按钮挡住游戏。
+- 方向键 ↑↓←→ + Z/X/C，支持多指同时按下和长按。
+- **持久化保存游戏自身的 Flash SharedObject 数据**：WebView DOM Storage + 每 2.5 秒自动快照到应用私有目录，应用重新打开时必要时恢复。
+- 屏幕右上角 **「存档」** 可备份当前已有存档、导出 JSON、从文件导入 JSON、重启游戏。
+- 导出存档文件后可以在重装或换手机后再导入；**仅卸载应用而不导出，Android 会删除应用内保存的数据**。
+
+## 安装/升级注意
+
+**v1.0.0 使用了临时调试签名**，新版无法保证在 Android 上直接覆盖旧版。如果安装提示签名冲突，请先备份旧版能保存的数据，再卸载 v1.0.0 并安装 v1.1.0。旧版没有导出存档功能，因此无法提供可靠的无损迁移方法。
+
+从 v1.1.0 开始 GitHub Actions 缓存签名密钥，以供后续版本保持同一安装包签名。
+
+## 兼容性状态
+
+已通过 Android 编译及 APK 包内资源检查（共 56 SWF、7 MP3），**尚未完成 Android 真机人物渲染和存档读写实测**。Ruffle 自身已有对该游戏的文字/数字渲染兼容性问题报告，资源补齐并不必然解决字体问题。
+
+游戏版权归原作者所有；Ruffle 为独立的开源 Flash 兼容层。请遵守原游戏的授权及再分发条件。
 
 原始页面：https://www.comdotgame.com/play/witch-girl
+
 Ruffle：https://ruffle.rs
