@@ -59,3 +59,15 @@ keywords=['loader','load','witch','noel','character','stage','asset','chara','en
 for k in keywords:
     subset=[s for s in results if k in s.lower()]
     print('KEYWORD',k,'count',len(subset),'SAMPLES',repr(subset[:65])[:3500])
+
+print("== RESOURCE LITERALS ==")
+patterns=[
+ rb'[a-zA-Z0-9_./-]{2,100}\.(?:swf|jpg|jpeg|png|wav|mp3|flv|xml|txt|dat|csv|bmp|bin|gif|ogg|m4a)',
+ rb'[A-Za-z0-9_/\.\-]{2,130}2\.20[A-Za-z0-9_/\.\-]{0,130}',
+ rb'(?:data|image|chara|witch|girl|load|bitmap|mask|sprite|movie|graphics|voice|sound)[A-Za-z0-9_./-]{3,110}'
+]
+for pat in patterns:
+    hits=list(dict.fromkeys(m.group().decode("ascii","ignore") for m in re.finditer(pat,swf,flags=re.I)))
+    print("PATTERN",pat.decode('ascii','replace'),"COUNT",len(hits))
+    for hit in hits[:200]:
+        print("HIT",repr(hit[:160]))
