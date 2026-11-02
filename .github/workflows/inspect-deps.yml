@@ -2,7 +2,7 @@ name: Inspect game dependencies
 on:
   push:
     branches: [main]
-    paths: [".github/workflows/inspect-deps.yml", "tools/analyze_swf.py"]
+    paths: [".github/workflows/inspect-deps.yml", "tools/analyze_swf.py", "tools/probe_external.py"]
   workflow_dispatch:
 jobs:
   analyze:
@@ -10,3 +10,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: python3 tools/analyze_swf.py
+      - run: python3 tools/probe_external.py
