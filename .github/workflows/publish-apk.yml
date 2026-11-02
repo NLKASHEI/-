@@ -1,0 +1,33 @@
+name: Publish offline APK
+on:
+  push:
+    branches: [main]
+    paths: [".github/workflows/publish-apk.yml"]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Witch-Girl-offline-APK
+          run-id: 41496551504
+          github-token: ${{ github.token }}
+          path: dist
+      - name: Prepare verified APK
+        run: |
+          test -s dist/app-debug.apk
+          mv dist/app-debug.apk dist/Witch-Girl-Offline-v1.0.0.apk
+          sha256sum dist/Witch-Girl-Offline-v1.0.0.apk
+      - name: Publish direct APK download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create v1.0.0 dist/Witch-Girl-Offline-v1.0.0.apk \
+            --title "Witch Girl Offline Android v1.0.0" \
+            --notes "Unofficial, untested Android APK. Offline Ruffle player and original Japanese v2.20 Flash game embedded. Landscape with 4 arrows and Z/X/C. Installed app does not require network connectivity. Original game © respective creators. Use only if you have appropriate rights." \
+            --prerelease
