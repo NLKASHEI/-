@@ -1,0 +1,8 @@
+Crynaria 实时画廊 · v1.0.7（versionCode 8）
+
+APK 165 MB，Release 下载：
+https://github.com/NLKASHEI/-/releases/download/crynaria-v1.0.7/Crynaria-Realtime-v1.0.7.apk
+Release：https://github.com/NLKASHEI/-/releases/tag/crynaria-v1.0.7
+
+本版：禁用所有名字含 mosaic 的马赛克网格（冒险者（城堡）等），保留抖动/取景/着色器修复。
+已知：7 条怪物动作仍不播放，排查中。
