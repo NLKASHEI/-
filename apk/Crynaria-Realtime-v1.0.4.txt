@@ -1,0 +1,18 @@
+Crynaria 实时画廊 · v1.0.4（versionCode 5）
+
+APK 体积 165 MB，超过 GitHub 单文件 100 MB 限制，所以放在 Release 里下载：
+
+https://github.com/NLKASHEI/-/releases/download/crynaria-v1.0.4/Crynaria-Realtime-v1.0.4.apk
+
+Release 页面：
+https://github.com/NLKASHEI/-/releases/tag/crynaria-v1.0.4
+
+包名：local.crynaria.realtime
+版本：1.0.4 (5)
+
+本版改动：
+- 怪物上下抖动：AnyPortrait 的 root motion 每帧把模型往下拖，已把实例位置钉死
+- 取景过近/裁切：去掉了中位数裁剪，改回全网格并集（只排除长宽比 > 8 的细长特效）
+- 攻击判定方块不再显示（那两块绿色矩形）
+- AnyPortrait 材质 shader 的 Pass 改成 URP 的 UniversalForward（之前是内置管线 ForwardBase，桌面显示粉红、安卓直接不画）
+- Android 图形 API 改为 GLES3 优先
