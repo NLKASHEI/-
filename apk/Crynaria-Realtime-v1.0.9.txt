@@ -1,0 +1,7 @@
+Crynaria 实时画廊 · v1.0.9（versionCode 10）
+
+APK 165 MB，Release 下载：
+https://github.com/NLKASHEI/-/releases/download/crynaria-v1.0.9/Crynaria-Realtime-v1.0.9.apk
+Release：https://github.com/NLKASHEI/-/releases/tag/crynaria-v1.0.9
+
+本版：Always Included Shaders 加入 74 个 Live2D/AnyPortrait/游戏 shader，尝试修复安卓 CG 不播放。
