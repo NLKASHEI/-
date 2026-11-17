@@ -1,0 +1,10 @@
+Crynaria 实时画廊 · v1.0.8（versionCode 9）
+
+APK 165 MB，Release 下载：
+https://github.com/NLKASHEI/-/releases/download/crynaria-v1.0.8/Crynaria-Realtime-v1.0.8.apk
+Release：https://github.com/NLKASHEI/-/releases/tag/crynaria-v1.0.8
+
+本版修复：
+- 7 条怪物动画不播放（史莱姆/史莱姆2/僵尸/持剑僵尸/苍蝇/蚊子/狼）：prefab 的 apPortrait 组件是 disabled，实例化后未启用
+- 同 7 条的贴图/变体错误（启用后 Root Unit 自动切到正确变体）
+- 马赛克网格禁用
